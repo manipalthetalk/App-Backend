@@ -9,6 +9,7 @@ from sys import argv
 from bs4 import BeautifulSoup
 
 from pprint import pprint
+import json
 
 
 URL = "http://slcm.manipal.edu/{}"
@@ -35,7 +36,6 @@ def login(rollno, password):
         return driver
 
     except TimeoutException:
-        print("Request timed out")
         return None
 
 
@@ -59,7 +59,6 @@ def construct(driver):
         elem_present = EC.presence_of_element_located((By.ID, "ContentPlaceHolder1_rtprAssessmentHeader_pnlInternal_0"))
         WebDriverWait(driver, timeout).until(elem_present)
     except TimeoutException:
-        print("Request timed out")
         return None
 
     source = driver.page_source
@@ -68,7 +67,7 @@ def construct(driver):
     in_marks = internalmarks(source)
     ex_marks = externalmarks(source)
 
-    response = {"timetable" : ttable, "attendance" : att, "marks" : { "internal marks" : in_marks, "external marks" : ex_marks}}
+    response = {"Timetable" : ttable, "Attendance" : att, "Marks" : { "Internal Marks" : in_marks, "External Marks" : ex_marks}}
 
     return response
 
@@ -169,7 +168,7 @@ def main():
     password = argv[2]
     driver = login(regno, password)
     response = construct(driver)
-    pprint(response) ### ~(^.^)~ pretty printing
+    print(json.dumps(response)) ### ~(^.^)~ pretty printing
 
 main()
 
