@@ -6,14 +6,16 @@ import (
 	"log"
 	"net/http"
 	"os/exec"
+	"strings"
 	"time"
 
 	cache "github.com/patrickmn/go-cache"
 )
 
 const (
-	VenvCmd = "source scraper/venv/bin/activate"
-	PyCmd   = "python scraper/scraper.py"
+	VenvCmd  = "source scraper/venv/bin/activate"
+	PyCmd    = "python scraper/scraper.py"
+	TimedOut = string('"') + "{ error : 'Request timed out' }" + string('"') + "\n"
 )
 
 var (
@@ -21,17 +23,19 @@ var (
 )
 
 type client struct {
-	RegNo         string
-	Password      string
+	RegNo    string
+	Password string
+
+	Timetable     map[string]*json.RawMessage
 	Attendance    map[string]*json.RawMessage
 	Internalmarks map[string]*json.RawMessage
 	Externalmarks map[string]*json.RawMessage
-	Timetable     map[string]*json.RawMessage
 	Marks         map[string]*json.RawMessage
-	Json          string
+
+	Json string
 }
 
-func api(w http.ResponseWriter, r *http.Request) {
+func Handler(w http.ResponseWriter, r *http.Request) {
 	fmt.Println(r.Method)
 
 	if r.FormValue("regno") == "" || r.FormValue("password") == "" {
@@ -39,16 +43,18 @@ func api(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	curr := &client{}
+	curr := &client{} // Current client
 	curr.RegNo = r.FormValue("regno")
 	curr.Password = r.FormValue("password")
-	Json, found := c.Get(curr.RegNo)
+
+	Json, found := c.Get(curr.RegNo) // Check cache
 	if found {
 		fmt.Fprintf(w, Json.(string))
-		return
 	} else {
 		curr.SetData()
-		c.Set(curr.RegNo, curr.Json, cache.DefaultExpiration)
+		if strings.Compare(curr.Json, TimedOut) != 0 { // Don't cache failed responses
+			c.Set(curr.RegNo, curr.Json, cache.DefaultExpiration)
+		}
 		fmt.Fprintf(w, curr.Json)
 	}
 }
@@ -81,6 +87,6 @@ func (c *client) SetData() {
 }
 
 func main() {
-	http.HandleFunc("/", api)
+	http.HandleFunc("/", Handler)
 	http.ListenAndServe(":9090", nil)
 }
