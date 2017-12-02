@@ -65,9 +65,10 @@ def construct(driver):
     source = driver.page_source
     driver.close()
     att = attendance(source)
-    marks = internalmarks(source)
+    in_marks = internalmarks(source)
+    ex_marks = externalmarks(source)
 
-    response = {"timetable" : ttable, "attendance" : att, }
+    response = {"timetable" : ttable, "attendance" : att, "marks" : { "internal marks" : in_marks, "external marks" : ex_marks}}
 
     return response
 
@@ -133,24 +134,30 @@ def internalmarks(source):
     response = {}
     soup = BeautifulSoup(source, 'html.parser')
     div = soup.find('div', {'id' : 'accordion'})
+
     sub_names = [sub.text for sub in soup.find_all('a', {'data-parent' : '#accordion'})]
     sub_names = [sub.split('\n')[2] for sub in sub_names]
+    sub_names = [' '.join(s.split(' ')[4:]) for s in sub_names]
+    sub_names = [s[1:] for s in sub_names]
 
+    #sub_names = list(set(sub_names)) ## Messes with the order of the names
     sub_marks = soup.find_all('div', {'class' : 'panel-collapse collapse'})
 
-    '''
-    k = 0
-    for sub in sub_marks:
+
+    for k, sub in enumerate(sub_marks):
         entries = [i.text for i in sub.find_all('td')]
         resp = {}
-        for x in range(len(entries)-2):
+        for x in range(0, len(entries) - 2, 3):
             resp[entries[x]] = { "Total" : entries[x+1], "Obtained" : entries[x+2]}
-        response[sub_names[k]] = resp
-        ++k
-    print(response)
-    exit()
-    '''
 
+        response[sub_names[k]] = resp
+
+    return response
+
+
+
+def externalmarks(source):
+    return ' '
 
 def main():
     """ 
@@ -165,4 +172,6 @@ def main():
     pprint(response) ### ~(^.^)~ pretty printing
 
 main()
+
+
 
