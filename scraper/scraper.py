@@ -1,42 +1,32 @@
-from selenium import webdriver
-from selenium.common.exceptions import TimeoutException
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.common.by import By
-
-from time import sleep
+import mechanize
 from sys import argv
 from bs4 import BeautifulSoup
-
 from pprint import pprint
 import json
 
 
 URL = "http://slcm.manipal.edu/{}"
-timeout = 3 
 
-def login(rollno, password):
+def login(regno, password):
     """
     Logs the user in and returns the driver.
     Handles wrong credentials, etc. (Returns none in that case)
     """
-    driver = webdriver.Chrome()
-    driver.get(URL.format('loginform.aspx'))
+    driver = mechanize.Browser()
+    response = driver.open(URL.format('loginform.aspx'))
+    driver.select_form("form1")
+    driver.form["txtUserid"] = regno
+    driver.form["txtpassword"] = password
+    driver.method = "POST"
 
-    user_field = driver.find_element_by_id("txtUserid")
-    pass_field = driver.find_element_by_id("txtpassword")
-
-    user_field.send_keys(rollno)
-    pass_field.send_keys(password)
-    driver.find_element_by_css_selector('#btnLogin').click()
+    response = driver.submit()
 
     try:
-        elem_present = EC.presence_of_element_located((By.ID, 'lnkBtnHome'))
-        WebDriverWait(driver, timeout).until(elem_present)
-        return driver
-
-    except TimeoutException:
+        driver.open(URL.format('Academics.aspx'))
+    except Exception:
         return None
+
+    return driver
 
 
 def construct(driver):
@@ -49,22 +39,20 @@ def construct(driver):
     if driver is None:
         return "{ error : 'Request timed out' }"
 
-    driver.get(URL.format('StudentTimeTable.aspx')) ## Get timetable ##
-    sleep(1.5) ## Find a better solution
-    source = driver.page_source
+    """
+    response = driver.open(URL.format('StudentTimeTable.aspx')) ## Get timetable ##
+    source = response.read()
     ttable = timetable(source)
+    """
+    ttable = ""
 
-    driver.get(URL.format('Academics.aspx')) ## Get marks, attendance ##
-    try:
-        elem_present = EC.presence_of_element_located((By.ID, "ContentPlaceHolder1_rtprAssessmentHeader_pnlInternal_0"))
-        WebDriverWait(driver, timeout).until(elem_present)
-    except TimeoutException:
-        return None
-
-    source = driver.page_source
-    driver.close()
+    response = driver.open(URL.format('Academics.aspx')) ## Get marks, attendance ##
+    source = response.read()
     att = attendance(source)
     in_marks = internalmarks(source)
+
+    response = driver.open(URL.format('GradeSheet.aspx')) ## Get marks, attendance ##
+    source = response.read()
     ex_marks = externalmarks(source)
 
     response = {"Timetable" : ttable, "Attendance" : att, "Marks" : { "Internal Marks" : in_marks, "External Marks" : ex_marks}}
@@ -156,7 +144,21 @@ def internalmarks(source):
 
 
 def externalmarks(source):
-    return ' '
+
+    response = {}
+    soup = BeautifulSoup(source, 'html.parser')
+    cgpa_span = soup.find('span', {'id' : 'ContentPlaceHolder1_lblCGPA'})
+    cgpa = cgpa_span.text
+
+    for i in range(8):
+        span_id = "ContentPlaceHolder1_grvGradeSheet_lbl{}_" + str(i)
+        subject_name = soup.find('span', {'id' : span_id.format("Subject")}).text
+        subject_grade = soup.find('span', {'id' : span_id.format("Grade")}).text
+        response[subject_name] = subject_grade
+
+    response["total"] = cgpa
+
+    return response
 
 def main():
     """ 
@@ -168,9 +170,7 @@ def main():
     password = argv[2]
     driver = login(regno, password)
     response = construct(driver)
-    print(json.dumps(response)) ### ~(^.^)~ pretty printing
+    pprint(json.dumps(response)) ### ~(^.^)~ pretty printing
 
 main()
-
-
 
