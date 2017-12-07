@@ -1,5 +1,5 @@
 '''
-Authors - Lakshay Kalbhor, Nishant Sahoo
+Authors - Lakshay Kalbhor (kalbhor), Nishant Sahoo (nishantsahoo)
 '''
 
 import mechanize
