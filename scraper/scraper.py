@@ -1,3 +1,7 @@
+'''
+Authors - Lakshay Kalbhor, Nishant Sahoo
+'''
+
 import mechanize
 from sys import argv
 from bs4 import BeautifulSoup
