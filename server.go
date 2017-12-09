@@ -36,6 +36,10 @@ type client struct {
 }
 
 func Handler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
+	w.Header().Set("Access-Control-Expose-Headers", "Authorization")
+
 	fmt.Println(r.Method)
 
 	if r.FormValue("regno") == "" || r.FormValue("password") == "" {
