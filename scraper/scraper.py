@@ -27,8 +27,8 @@ def login(regno, password):
 
     try:
         driver.open(URL.format('Academics.aspx'))
-    except Exception:
-        return None
+    except Exception: ## User has given wrong credentials
+        return None 
 
     return driver
 
@@ -50,14 +50,20 @@ def construct(driver):
     """
     ttable = ""
 
-    response = driver.open(URL.format('Academics.aspx')) ## Get marks, attendance ##
-    source = response.read()
-    att = attendance(source)
-    in_marks = internalmarks(source)
+    try:
+        response = driver.open(URL.format('Academics.aspx')) ## Get marks, attendance ##
+        source = response.read()
+        att = attendance(source)
+        in_marks = internalmarks(source)
+    except Exception as e:
+        return "{ error : 'Could not fetch attendance and internal marks. %s' }" % e
 
-    response = driver.open(URL.format('GradeSheet.aspx')) ## Get marks, attendance ##
-    source = response.read()
-    ex_marks = externalmarks(source)
+    try:
+        response = driver.open(URL.format('GradeSheet.aspx')) ## Get marks, attendance ##
+        source = response.read()
+        ex_marks = externalmarks(source)
+    except Exception as e:
+        return "{ error : 'Could not fetch endsem marks. %s' }" % e
 
     response = {"Timetable" : ttable, "Attendance" : att, "Marks" : { "Internal Marks" : in_marks, "External Marks" : ex_marks}}
 
