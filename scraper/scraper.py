@@ -130,6 +130,7 @@ def internalmarks(source):
     sub_names = [sub.split('\n')[2] for sub in sub_names]
     sub_names = [' '.join(s.split(' ')[4:]) for s in sub_names]
     sub_names = [s[1:] for s in sub_names]
+    sub_names = [i.strip() for i in sub_names]
 
     #sub_names = list(set(sub_names)) ## Messes with the order of the names
     sub_marks = soup.find_all('div', {'class' : 'panel-collapse collapse'})
