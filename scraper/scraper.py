@@ -41,7 +41,7 @@ def construct(driver):
     """
 
     if driver is None:
-        return "{ error : 'Request timed out' }"
+        return "{ error : 'Invalid credentials' }"
 
     """
     response = driver.open(URL.format('StudentTimeTable.aspx')) ## Get timetable ##
@@ -154,10 +154,14 @@ def externalmarks(source):
     cgpa_span = soup.find('span', {'id' : 'ContentPlaceHolder1_lblCGPA'})
     cgpa = cgpa_span.text
 
-    for i in range(8):
-        span_id = "ContentPlaceHolder1_grvGradeSheet_lbl{}_" + str(i)
-        subject_name = soup.find('span', {'id' : span_id.format("Subject")}).text
-        subject_grade = soup.find('span', {'id' : span_id.format("Grade")}).text
+    table = soup.find('table', {'class' : 'table table-bordered'})
+    all_tr = table.find_all('tr')
+    all_tr = all_tr[1:] # Escape the first tr (Contains table headers like : Title, GPA , Subject name
+
+    for tr in all_tr:
+        spans = tr.find_all('span')
+        subject_name = spans[1].text
+        subject_grade = spans[2].text
         response[subject_name] = subject_grade
 
     response["total"] = cgpa
@@ -174,7 +178,7 @@ def main():
     password = argv[2]
     driver = login(regno, password)
     response = construct(driver)
-    pprint(json.dumps(response)) ### ~(^.^)~ pretty printing
+    print(json.dumps(response))
 
 main()
 
