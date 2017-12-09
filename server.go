@@ -13,9 +13,11 @@ import (
 )
 
 const (
-	VenvCmd  = "source scraper/venv/bin/activate"
-	PyCmd    = "python scraper/scraper.py"
-	TimedOut = string('"') + "{ error : 'Request timed out' }" + string('"') + "\n"
+	seperator = ":"
+	port      = "8080"
+	VenvCmd   = "source scraper/venv/bin/activate"
+	PyCmd     = "python scraper/scraper.py"
+	TimedOut  = string('"') + "{ error : 'Request timed out' }" + string('"') + "\n"
 )
 
 var (
@@ -36,14 +38,12 @@ type client struct {
 }
 
 func Handler(w http.ResponseWriter, r *http.Request) {
+
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
 	w.Header().Set("Access-Control-Expose-Headers", "Authorization")
 
-	fmt.Println(r.Method)
-
 	if r.FormValue("regno") == "" || r.FormValue("password") == "" {
-		fmt.Println("Blank")
 		return
 	}
 
@@ -53,44 +53,34 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 	Json, found := c.Get(curr.RegNo) // Check cache
 	if found {
-		fmt.Fprintf(w, Json.(string))
+		fmt.Fprintf(w, Json.(string)) // If response found in cache, print it
+		return
 	} else {
-		curr.SetData()
-		if strings.Compare(curr.Json, TimedOut) != 0 { // Don't cache failed responses
-			c.Set(curr.RegNo, curr.Json, cache.DefaultExpiration)
+		err := curr.Run() // Set the clients data (Invoke scraper)
+		if err != nil {
+			curr.Json = err.Error()
+			log.Fatal(err) // Change this
 		}
-		fmt.Fprintf(w, curr.Json)
+		if strings.Compare(curr.Json, TimedOut) != 0 { // Don't cache failed responses (Wrong credentials)
+			c.Set(curr.RegNo, curr.Json, cache.DefaultExpiration) // Set cache
+		}
+		fmt.Fprintf(w, curr.Json) // Print json
 	}
 }
 
-func (c *client) Run() (string, error) {
+func (c *client) Run() error {
 	command := fmt.Sprintf("%s; %s %s %s;", VenvCmd, PyCmd, c.RegNo, c.Password)
-	fmt.Println(command)
 	cmd := exec.Command("sh", "-c", command)
 	stdout, err := cmd.Output()
 	if err != nil {
-		return "", err
+		return err // To do : Send custom error along with stderr log
 	}
-	return string(stdout), nil
-}
-
-func (c *client) SetData() {
-	response, err := c.Run()
-	if err != nil {
-		log.Fatal("Error executing command : ", err)
-	}
-	c.Json = response
-	/*
-		json.Unmarshal([]byte(response), c.Json)
-		json.Unmarshal(*c.Json["Attendance"], c.Attendance)
-		json.Unmarshal(*c.Json["Timetable"], c.Timetable)
-		json.Unmarshal(*c.Json["Marks"], c.Marks)
-		json.Unmarshal(*c.Marks["External Marks"], c.Externalmarks)
-		json.Unmarshal(*c.Marks["Internal Marks"], c.Internalmarks)
-	*/
+	c.Json = string(stdout)
+	return nil
 }
 
 func main() {
+	addr := seperator + port
 	http.HandleFunc("/", Handler)
-	http.ListenAndServe(":9090", nil)
+	http.ListenAndServe(addr, nil)
 }
