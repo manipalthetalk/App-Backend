@@ -39,6 +39,11 @@ type client struct {
 
 func Handler(w http.ResponseWriter, r *http.Request) {
 
+	if r.Method != "POST" {
+		fmt.Fprintf(w, "Invalid request")
+		return
+	}
+
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
 	w.Header().Set("Access-Control-Expose-Headers", "Authorization")
