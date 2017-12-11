@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -97,12 +98,22 @@ func (c *client) Run() error {
 
 	command := fmt.Sprintf("%s; %s %s %s %s;", VenvCmd, PyCmd, c.RegNo, c.Password, filePath)
 	cmd := exec.Command("sh", "-c", command)
-	stdout, err := cmd.Output()
-
+	stderr, err := cmd.StderrPipe()
 	if err != nil {
 		return err // To do : Send custom error along with stderr log
 	}
-	log.Println(string(stdout))
+
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+
+	in := bufio.NewScanner(stderr)
+	for in.Scan() {
+		log.Printf(in.Text())
+	}
+	if err := in.Err(); err != nil {
+		log.Printf("error : %s", err)
+	}
 
 	dat, err := ioutil.ReadFile(filePath)
 	if err != nil {
