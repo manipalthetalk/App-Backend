@@ -7,8 +7,11 @@ from sys import argv
 from bs4 import BeautifulSoup
 from pprint import pprint
 import json
+import logging
 
 
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 URL = "http://slcm.manipal.edu/{}"
 
 def login(regno, password):
@@ -18,16 +21,23 @@ def login(regno, password):
     """
     driver = mechanize.Browser()
     response = driver.open(URL.format('loginform.aspx'))
+    logger.info("Opened login form in driver")
+
     driver.select_form("form1")
+    logger.info("Selected form")
+
     driver.form["txtUserid"] = regno
     driver.form["txtpassword"] = password
     driver.method = "POST"
 
     response = driver.submit()
+    logger.info("Submitted form")
 
     try:
         driver.open(URL.format('Academics.aspx'))
+        logger.info("User authenticated")
     except Exception: ## User has given wrong credentials
+        logger.warn("User credentials were wrong")
         return None 
 
     return driver
@@ -51,19 +61,37 @@ def construct(driver):
     ttable = ""
 
     try:
+        logger.info("Opening academics page")
         response = driver.open(URL.format('Academics.aspx')) ## Get marks, attendance ##
         source = response.read()
+        logger.info("Opened academics page")
+
+        logger.info("Getting attendance")
         att = attendance(source)
+        logger.info("Got attendance")
+
+        logger.info("Getting internal marks")
         in_marks = internalmarks(source)
-    except Exception as e:
-        return "{ error : 'Could not fetch attendance and internal marks. %s' }" % e
+        logger.info("Got internal marks")
+
+    except Exception, e:
+        logger.error("Failed to open academics page", exc_info=True)
+        return "{ error : 'Could not fetch attendance and internal marks.'}"
 
     try:
+
+        logger.info("Opening gradesheet")
         response = driver.open(URL.format('GradeSheet.aspx')) ## Get marks, attendance ##
         source = response.read()
+        logger.info("Opened gradesheet")
+
+        logger.info("Getting endsem marks")
         ex_marks = externalmarks(source)
-    except Exception as e:
-        return "{ error : 'Could not fetch endsem marks. %s' }" % e
+        logger.info("Got endsem marks")
+
+    except Exception, e:
+        logger.error("Failed to get gradesheet", exc_info=True)
+        return "{ error : 'Could not fetch endsem marks.' }"
 
     response = {"Timetable" : ttable, "Attendance" : att, "Marks" : { "Internal Marks" : in_marks, "External Marks" : ex_marks}}
 
@@ -183,9 +211,12 @@ def main():
     """
     regno = argv[1]
     password = argv[2]
+    unique_file = argv[3] # A unique file containing json for this request
+
     driver = login(regno, password)
     response = construct(driver)
-    print(json.dumps(response))
+    f = open(unique_file, "w")
+    f.write(json.dumps(response))
 
 main()
 
