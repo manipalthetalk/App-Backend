@@ -43,7 +43,7 @@ def login(regno, password):
     return driver
 
 
-def construct(driver):
+def construct(driver, regno):
     """ 
     Main response contructor. Collects responses from 
     independent functions (timetable, attendance, etc) and merges into 
@@ -74,6 +74,10 @@ def construct(driver):
         in_marks = internalmarks(source)
         logger.info("Got internal marks")
 
+        subjects = []
+        for key, _ in in_marks.items(): # Get all the subject names from the key of internal marks
+            subjects.append(key)
+
     except Exception, e:
         logger.error("Failed to open academics page", exc_info=True)
         return "{ error : 'Could not fetch attendance and internal marks.'}"
@@ -86,20 +90,28 @@ def construct(driver):
         logger.info("Opened gradesheet")
 
         logger.info("Getting endsem marks")
-        ex_marks = externalmarks(source)
+        grades = gradesheet(source)
         logger.info("Got endsem marks")
+
+        subjects_marks = {}
+
+        for subject in subjects:
+            key = str(key)
+            subjects_marks[subject] = {"Grade": grades[subject], "Internals" : in_marks[subject]}
+
+        subjects_marks["Total"] = grades["Total"]
 
     except Exception, e:
         logger.error("Failed to get gradesheet", exc_info=True)
         return "{ error : 'Could not fetch endsem marks.' }"
 
-    response = {"Timetable" : ttable, "Attendance" : att, "Marks" : { "Internal Marks" : in_marks, "External Marks" : ex_marks}}
+    response = {"Regno" : regno, "Timetable" : ttable, "Attendance" : att, "Subjects" : subjects_marks}
 
     return response
 
 def timetable(source):
     """
-    Fetches the timetable of the weeek by opening the page.
+    Fetches the timetable of the week by opening the page.
 
     Known Bug/Fact : Lets say it is Friday today. The user asks for Mondays
     timetable. The user obviously means the coming Monday, rather than the preceding one. 
@@ -182,7 +194,7 @@ def internalmarks(source):
 
 
 
-def externalmarks(source):
+def gradesheet(source):
 
     response = {}
     soup = BeautifulSoup(source, 'html.parser')
@@ -199,7 +211,7 @@ def externalmarks(source):
         subject_grade = spans[2].text
         response[subject_name] = subject_grade
 
-    response["total"] = cgpa
+    response["Total"] = cgpa
 
     return response
 
@@ -214,7 +226,7 @@ def main():
     unique_file = argv[3] # A unique file containing json for this request
 
     driver = login(regno, password)
-    response = construct(driver)
+    response = construct(driver, regno)
     f = open(unique_file, "w")
     f.write(json.dumps(response))
 
