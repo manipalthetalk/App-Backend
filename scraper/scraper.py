@@ -99,7 +99,7 @@ def construct(driver, regno):
             key = str(key)
             subjects_marks[subject] = {"Grade": grades[subject], "Internals" : in_marks[subject]}
 
-        subjects_marks["Total"] = grades["Total"]
+        subjects_marks["Total GPA"] = grades["Total"]
 
     except Exception, e:
         logger.error("Failed to get gradesheet", exc_info=True)
