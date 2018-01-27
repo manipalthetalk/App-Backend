@@ -20,7 +20,7 @@ const (
 	port      = "8080"
 	VenvCmd   = "source scraper/venv/bin/activate"
 	PyCmd     = "python scraper/scraper.py"
-	TimedOut  = string('"') + "{ error : 'Request timed out' }" + string('"') + "\n"
+	TimedOut  = "{ error : 'Request timed out' }"
 )
 
 var (
